@@ -1,0 +1,214 @@
+<html>
+<head>
+<title>Append Keywords v6.6.6 by T&Oslash;pher Null</title>
+<!--
+
+Version: v6.6.6
+20171020
+Author Christopher String
+This page accepts a file as input, reads through the file, adds the appropriate keyword to the end of the line and continues on and saves it out to the NEW file name given with the suffix "-amended.csv" to the file name.
+
+===================
+Implemented:
+1. Accepts file input, provides file link download.
+===================
+There are no sidecar scripts or dependencies, this page will run on its own!
+===================
+I was lazy and used comparison and indexOf statements.  Research shows that indexOf is the fastest method for finding matches in long strings. SO hopefully we don't take a hit if there's a better data structure to do this with!
+===================
+
+-->
+
+
+<style>
+
+body {font-family: helvetica; font-size:12px;}
+p {line-height:1.5em;}
+
+/* colour */
+
+body {background: #fefefe; font-family:helvetica,sans; font-size:1.5em;}
+#bigForm, #bigform input{text-align:center;}
+input {padding:1em;padding-top:2em; border:0px;}
+input:focus{outline-style:none;box-shadow:none;border-color:transparent;}
+#downloadlink {background-color:#0e85d8; padding:1.5em;text-decoration:none; font-weight:bolder;color:#fff; width:50%; margin:auto;border-radius: .5em; display:block;}
+#downloadlink:hover{background-color:#0e8de5;}
+
+#filenames,#performance,#credits{font-size:.5em; color:#777;}
+#helplink, #repeat{font-size:.5em;}
+a:link, a:visited, .link, .link:visited{text-decoration:none;color:#0e85d8; font-weight:bold;}
+
+#repeat {color: #d8340e;}
+
+.hidden{display:none;}
+
+</style>
+<script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+<script>
+
+$(document).ready(function(){
+
+	$("#bigForm").fadeIn(1000);
+
+	$("#helplink").click(function(){$("#helpbox").slideToggle(500);});
+
+
+
+
+
+}); // end document ready call!
+
+$("#bigForm").submit(function(event){event.preventDefault();});
+
+function readFile(event){
+    var input = event.target;
+    var reader = new FileReader();
+	var throwAwayGen;
+
+    reader.onload = function(){
+	
+	// begin async function
+		var text = reader.result;
+		var fileContentsArray = text.split('\r\n');
+		var recordNumber = fileContentsArray.length-1;
+		if (fileContentsArray[0].toLowerCase().indexOf('file')!=-1) {fileContentsArray.shift(); /* get rid of that head row*/}
+			var startTime = performance.now();		
+			for (var i=0; i<fileContentsArray.length; i++){
+				
+				fileContentsArray[i] = returnGen(fileContentsArray[i]);
+				
+			} // end for async loop
+		var endTime = performance.now();
+		var timeElapsed = endTime-startTime;
+		//console.log(typeof(timeElapsed));
+		timeElapsed=timeElapsed.toString().substring(0,6);
+		$("#performance").html("<strong>"+recordNumber+"</strong> records completed in: <strong>"+timeElapsed+"</strong>ms. ");
+			var curFileName=input.files[0].name.substring(0,input.files[0].name.indexOf(".csv"));
+			$("#downloadlink").attr('download',curFileName+"-amended.csv");
+			writeNewCSV(fileContentsArray,curFileName);
+
+	}; // end readerOnload function
+
+    reader.readAsText(input.files[0]);
+} // end readFile function
+
+function returnGen(strLine,matrix){
+//console.log("This is the unedited strLine before doing gen matching!\n"+strLine);
+strLine = strLine.replace(/,+$/g,'');
+var testYear=0;
+var throwAwayGen="No-Generation-Entered";
+	// store detection
+	if (strLine.indexOf('Mustang',0)>-1 || (strLine.indexOf('AmericanMuscle',0)>-1 &&strLine.indexOf('F-150',0)==-1)) // if mustang shows up, or only americanmuscle shows up AND f-150 is not present then its mustang
+		{
+			var mustangIndex = strLine.indexOf('Mustang',0);
+			if (mustangIndex>-1){testYear=strLine.substr(mustangIndex+8,4);}
+				else{testYear = strLine.substr(strLine.indexOf("AmericanMuscle",0)+15,4);}
+			
+			//console.log("this is the testYear for Mustangs: "+testYear);
+			
+			if (mustangIndex<0){throwAwayGen=";Mustang"}else{throwAwayGen='';}
+			if(testYear>=1979 && testYear<=1993){throwAwayGen+=";1979-1993;79-93;79-93CI;79-93CustomerImages;Foxbody;CI;CustomerImages";}
+			else if(testYear>=1994 && testYear<=1998){throwAwayGen+=";1994-1998;94-98;94-98CI;94-98CustomerImages;CI;CustomerImages";}
+			else if(testYear>=1999 && testYear<=2004){throwAwayGen+=";1999-2004;99-04;99-04CI;99-04CustomerImages;CI;CustomerImages";}
+			else if(testYear>=2005 && testYear<=2009){throwAwayGen+=";2005-2009;05-09;05-09CI;05-09CustomerImages;CI;CustomerImages";}
+			else if(testYear>=2010 && testYear<=2014){throwAwayGen+=";2010-2014;10-14;10-14CI;10-14CustomerImages;CI;CustomerImages";}
+			else if(testYear>=2015 && testYear<=2018){throwAwayGen+=";2015-2017;15-17;15-18;15-17CI;15-18CI;15-17CustomerImages;15-18CustomerImages;CI;CustomerImages";}
+		}
+	else if(strLine.indexOf('Silverado',0)>-1)
+		{
+			silveradoIndex = strLine.toLowerCase().indexOf('silverado');
+			testYear = strLine.substr(strLine.indexOf(";",silveradoIndex)+1,4);
+			console.log("this is the testYear for Silverado: "+testYear);
+			if(testYear>=2007 && testYear<=2013){throwAwayGen=";2007-2013";}
+			else if(testYear>=2014){throwAwayGen=";2014+";}
+		}
+	else if(strLine.indexOf('F-150',0)>-1)
+		{
+			testYear = strLine.substr(strLine.indexOf("F-150",0)+6,4);
+			//console.log("this is the testYear for F-150: "+testYear);
+			if(testYear>=1997 && testYear<=2003){throwAwayGen=";1997-2003;97-03;97-03CI;97-03CustomerImages;AmericanTrucks;CI;CustomerImages";}
+			else if(testYear>=2004 && testYear<=2008){throwAwayGen=";2004-2008;04-08;04-08CI;04-08CustomerImages;AmericanTrucks;CI;CustomerImages";}
+			else if(testYear>=2009 && testYear<=2014){throwAwayGen=";2009-2014;09-14;09-14CI;09-14CustomerImages;AmericanTrucks;CI;CustomerImages";}
+			else if(testYear>=2015 && testYear<=2018){throwAwayGen=";2015-2018;15-18;15-18CI;15-18CustomerImages;AmericanTrucks;CI;CustomerImages";}
+		}
+	else if(strLine.indexOf('ExtremeTerrain',0)>-1)
+		{
+		
+		/*
+			This data is OBNOXIOUS, they need to do a better job with sanitizing EXPORT data and making sure it is WELL FORMED!
+			
+			3 possibilities for finding the YEAR:
+			ExtremeTerrain;Wrangler;[YEAR] = good we did that
+			ExtremeTerrain;[YEAR] = good, we fixed that
+		*/	
+			extremeWranglerIndex = strLine.toLowerCase().indexOf("extremeterrain;wrangler",0);
+			if (extremeWranglerIndex!=-1){
+				// if extremeTerrain:Wrangler exists
+				testYear=strLine.substr(extremeWranglerIndex+24,4);
+				//console.log("extremeWranglerIndex:"+extremeWranglerIndex+"\nWranglerYear:"+testYear)
+			}else
+			{
+				testYear = strLine.substr(strLine.indexOf("ExtremeTerrain",0)+15,4);
+				//console.log("Wrangler is in keyword, so pull from wrangler position\n")	
+			}
+				
+			//console.log("this is the testYear for wrangler: "+testYear);
+			if(testYear>=1987 && testYear<=1995){throwAwayGen=";YJ;1987-1995;87-95;87-95CI;87-95CustomerImages;CI;CustomerImages";}
+			else if(testYear>=1997 && testYear<=2006){throwAwayGen=";TJ;1997-2006;97-06;97-06CI;97-06CustomerImages;CI;CustomerImages";}
+			else if(testYear>=2007 && testYear<=2017){throwAwayGen=";JK;2007-2017;07-17;07-17CI;07-17CustomerImages;CI;CustomerImages";} // add the next EVOLUTION OF THE jeep here!
+		}
+	else{ throwAwayGen="";} // empty string do nothing!
+
+	strLine = strLine.replace(/(\r|\n)/gm,"");
+	//console.log("Final\n"+strLine+throwAwayGen)
+	return strLine+throwAwayGen;
+
+} // end returnGen function
+
+function writeNewCSV(input,curName){
+	input = input.join("\n");
+	input = "File Name,Keywords\n"+input;
+	//console.log("this is a string again!\n"+input); //this is a string now!
+	var textFile = null,makeTextFile = function (newStr) {
+    var data = new Blob([newStr], {type: 'text/csv'});
+
+		// If we are replacing a previously generated file we need to
+		// manually revoke the object URL to avoid memory leaks.
+		
+    if (textFile !== null) {window.URL.revokeObjectURL(textFile);}
+
+    textFile = window.URL.createObjectURL(data);
+    return textFile;
+  };
+
+	//var create = document.getElementById('create'),
+    //textbox = document.getElementById('textbox');
+
+	$("#fs").hide(100,'linear',
+		$('#downloadlink').attr("href",makeTextFile(input)).fadeIn(1000,'swing',
+			$("#filenames").html("File download: <strong>"+curName+"-amended.csv</strong>").fadeIn(600),
+				$("#performance").fadeIn()));
+	$("#credits").fadeIn();
+	$("#repeat").fadeIn();
+
+} // end writeNewCSV function block
+
+
+
+</script>
+</head>
+<body>
+
+<form id="bigForm" action="broken.html" style="display:none;">
+<a download="newCSV.csv" id="downloadlink" style="display: none">DOWNLOAD AMENDED FILE</a>
+<input type="file" id="fs" autofocus accept=".csv" onchange="readFile(event)" />
+<span class="hidden" id="filenames"></span> <span class="hidden" id="performance"></span> <a href="appendkeywords.html" class="hidden link" id="repeat">Reload</a> <a href="#" id="helplink" class="link">Help?</a>
+<p id="helpbox" class="hidden">Data needs to entered into the CSV in this format:<br />-Model <strong>must</strong> precede the 4 digit year or the script will not work<br /><img src="datasave.png" /></p>
+<p id="credits">Keyword CSV append script v6.6.6 by <a href="mailto:chris.string@turn5.com?Subject=Append%20KeyWord%20Script%20Question" class="link">Topher Null</a></p>
+</form>
+
+
+
+
+
+</body>
