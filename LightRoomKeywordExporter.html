@@ -1,0 +1,221 @@
+<html>
+<head>
+	<title>LittleBits - Nothing Gets Stuck v1.3 by T&oslash;pher</title>
+	<!--
+		Version 1.3
+		After concatenating field values, regex updated to search for empty and NULL values in the string. (oops)	
+	-->
+<style>
+
+body{font-family:"Courier New", Courier, monospace;}
+form{width:75%;margin:auto;text-align:center;margin-top:3em;}
+input{padding:1em;margin:1em;}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: #4a4a4a;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+}
+
+.hidden{display:none;}
+span#bilonken {color:#1c94c1; font-weight:bold;}
+
+</style>
+<script src="https://code.jquery.com/jquery-3.2.1.js"></script>
+<script src="papaparse.min.js"></script>
+<script>
+
+function papaDontPreach(er,fileObj)
+{
+	alert("There was an error using PapaParse: "+er);
+} // end of papaDontPreach
+
+function crownTheKing(results,fileObj){
+		console.log("File parsed, do something. crownTheKing() function entered.");
+	var workingResults = results.data;
+	var workingErrors = results.errors;
+		//console.log("Errors:",workingErrors,"\nWorkingResults:",workingResults);
+	
+	console.log("workingResults:",workingResults);
+	// build regex
+	var regexp = /(,+)|(\s+)/g;
+	// take sanitized string and build an array, then pop each of these off after searching
+	var inputValues = $("#searchItems").val().trim().replace(regexp,",").toUpperCase().split(",");
+		//console.log("unsanitized input: ", $("#searchItems").val(),"\nSanitized: ",inputValues);
+	if (inputValues.length>0){returnMatches(inputValues,workingResults);} // check to see if it's not an empty string!	
+
+} // end of crownTheKing
+
+function returnMatches(searchArray,workingResArray){
+	var performanceStart = performance.now();
+	var newArray = workingResArray.filter(function(el){
+		// el is a reference to each array ELEMENT that the filter is iterating through
+		for (var i=0; i<searchArray.length; i++)
+		{
+			if (el['SKU'].replace(/-[a-zA-Z]/gi,"")==searchArray[i].replace(/-[a-zA-Z]/gi,"")){console.log("we found:",searchArray[i]);return el;}
+		}
+	}); // end of anonymous function inside of filter
+	
+	//display the stuff in the console, 
+		console.log(newArray);
+	// performance
+		var runTime = performance.now()-performanceStart;
+		console.log("Total runtime of the searchArray filter: ",runTime);
+	
+	// create an array that has all the crap in it~
+	var keyWordsArray=[];
+	var tempString="";
+	newArray.forEach(function(row){
+	
+		tempString+=row["SKU"]+",";
+			// container rename
+		if (row["ContainerName"]=="AMF"){tempString+="AmericanTrucks; American Truck; F-150;"}
+		else if (row["ContainerName"]=="AMM"){tempString+="AmericanMuscle;American Muscle; Mustang;"}
+		else if (row["ContainerName"]=="ATG"){tempString+="AmericanTrucks; American Trucks; GMC; Sierra;"}
+		else if (row["ContainerName"]=="ATR"){tempString+="AmericanTrucks; American Trucks; Dodge; Ram;"}
+		else if (row["ContainerName"]=="ATS"){tempString+="AmericanTrucks; American Trucks; Chevy; Silverado;"}
+		else if (row["ContainerName"]=="XTW"){tempString+="ExtremeTerrain; Extreme Terrain; Jeep; Wrangler; XT;"}
+		else{}
+			// end container rename
+		tempString+=row["Core Information//Brand"].replace(",","").trim()+";";
+		tempString+=row["Core Information//Item Name"].replace(",","").trim()+";";
+		tempString+=row["Core Information//Short Fitment"].replace(",","").trim()+";";
+		tempString+=row["CategoryPath"].replace("#@#",";").trim()/*+";"*/;
+
+		//get rid of double ;;
+		console.log("pre change: ", tempString);
+		//tempString = tempString.replace(/;\s*;/g,";"); //old regex
+		tempString = tempString.replace(/;+\s*\0*;/g,";"); //new, includes the null character
+		if (tempString.indexOf(";;")>=0){alert("still have double ;;");}
+		tempString=tempString.replace(";;",";");
+		//console.log("post double quote:", tempString);
+		//alert("this is the new string\n"+tempString);
+		//tempString = tempString.replace(/(\s;|;+\s|;+)/g,";"); // old
+		
+		
+		keyWordsArray.push(tempString); // push
+		tempString=""; //reset
+	}); // end of newArray.forEach()
+	
+	//console.log("keyWordsArray: ",keyWordsArray);
+	
+	//but now write the actual file for download, call writeNewCSV.
+	writeNewCSV(keyWordsArray,runTime);
+	
+	$("#downloadlink").attr('download',"outputkeywords-amended.csv");
+} // end returnMatches function for use on the .filter() method of the workingResults array []
+
+// jquery function things
+
+papaParseConfig = {
+	delimiter: "",	// auto-detect
+	newline: "",	// auto-detect
+	quoteChar: '"',
+	header: true,
+	dynamicTyping: false,
+	preview: 0,
+	encoding: "",
+	worker: false,
+	comments: false,
+	step: undefined,
+	complete: crownTheKing,
+	error: papaDontPreach,
+	download: false,
+	skipEmptyLines: true,
+	chunk: undefined,
+	fastMode: undefined,
+	beforeFirstChunk: undefined,
+	withCredentials: undefined
+} // end of papaParseConfig
+
+
+function readFile(event){
+	console.log("readFile(event) entered, file selected, calling Papa.parse()");
+	var fileRef = event.target.files[0];
+	Papa.parse(fileRef,papaParseConfig);
+	// callback function from Papa.parse() is crownTheKing
+	return false;
+} // end readFile function
+
+function writeNewCSV(input,runT){
+	input = input.join("\n");
+	input = "File Name,Keywords\n"+input;
+	//console.log("this is a string again!\n"+input); //this is a string now!
+	var textFile = null,makeTextFile = function (newStr) {
+    var data = new Blob([newStr], {type: 'text/csv'});
+
+		// If we are replacing a previously generated file we need to
+		// manually revoke the object URL to avoid memory leaks.
+		
+    if (textFile !== null) {window.URL.revokeObjectURL(textFile);}
+
+    textFile = window.URL.createObjectURL(data);
+    return textFile;
+  };
+
+	//var create = document.getElementById('create'),
+    //textbox = document.getElementById('textbox');
+
+	newRunT= runT.toString().substring(0,runT.toString().indexOf(".")+3);
+	
+	$("#inputFiles").hide();
+	$("label").hide();
+	$("#searchItems").hide(100,'linear',
+		$('#downloadlink').attr("href",makeTextFile(input)).fadeIn(1000,'swing',
+			$("#filenames").html("File download: <strong>outputkeywords-amended.csv</strong> in <span id='bilonken'><strong>"+newRunT+"ms</strong></span>").fadeIn(600),
+				$("#performance").fadeIn()));
+	$("#repeat").fadeIn();
+
+} // end writeNewCSV function block
+
+function enableFileChoose(evt){
+		console.log("search items are changed");
+	if($("#searchItems").val().trim().length>0){$("#inputFiles").prop("disabled", false);}
+		else{$("#inputFiles").prop("disabled", true);console.log("searchitems is blank");}
+	}
+
+
+
+
+$(document).ready(function(){
+	console.log("scripts loaded");
+	$("#inputFiles").submit(function(event){event.preventDefault();return false;}); //end preventing inputFromDoingAnything
+	
+	$("#form_sku").on("submit",function(event){event.preventDefault();crownTheKing();});
+	
+	$("#searchItems").on('input propertychange', enableFileChoose); // end blur detection
+}); //end document ready
+
+</script>	
+	
+</head>
+<body>
+
+<form id="form_sku">
+	<a download="newCSV.csv" id="downloadlink" style="display: none">DOWNLOAD AMENDED FILE</a><br />
+	<span class="hidden" id="filenames"></span> <span class="hidden" id="performance"></span><br /><br/> <a href="LightRoomKeywordExporter.html" class="hidden link" id="repeat">Reload</a>
+	<label for="searchItems" class="tooltip">Enter SKUS<input type="text" class="tooltip" id="searchItems" size="60"/> <span class="tooltiptext">Separate entries with a space or a comma!</span></label><br/>
+	<span><em>location: </em><strong>\\freezer\public\Retouch Team\WORKING SCRIPTS\Script Sandbox\KeyWord\SKUsNotPublished.csv</span>
+	<br /><input type="file" id="inputFiles" autofocus accept=".csv" onchange="readFile(event)" disabled />
+	
+	<p id="credits">LittleBits v1.3 by <a href="mailto:chris.string@turn5.com?Subject=Keywording%20Question" class="link">T&oslash;pher</a></p>
+</form>
+
+
+
+
+
+</body>
+</html>
